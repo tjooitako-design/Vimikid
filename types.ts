@@ -49,6 +49,10 @@ export interface Gift {
   imageUrl: string;
 }
 
+export interface AdminSettings {
+  adminWhatsapp: string;
+}
+
 export enum AppState {
   AUTH = 'AUTH',
   DASHBOARD = 'DASHBOARD',

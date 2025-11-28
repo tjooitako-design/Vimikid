@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, MALAYSIA_STATES } from '../types';
+import { User, MALAYSIA_STATES, AdminSettings } from '../types';
 import { Button } from './Button';
 
 interface AuthProps {
@@ -19,7 +19,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
   const [error, setError] = useState('');
 
   // Forgot PIN State
-  const [otpStep, setOtpStep] = useState(false); // false = enter name, true = enter OTP
+  const [otpStep, setOtpStep] = useState(false); // false = enter name, true = enter OTP (Simulation only)
   const [otpInput, setOtpInput] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [recoveryUser, setRecoveryUser] = useState<User | null>(null);
@@ -88,6 +88,14 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
     e.preventDefault();
     setError('');
     
+    // Check if Master WhatsApp is configured
+    const settingsStr = localStorage.getItem('vimiKid_adminSettings');
+    let adminWhatsapp = '';
+    if (settingsStr) {
+        const settings: AdminSettings = JSON.parse(settingsStr);
+        if (settings.adminWhatsapp) adminWhatsapp = settings.adminWhatsapp;
+    }
+
     const storedUsersStr = localStorage.getItem('vimiKid_users');
     const storedUsers: User[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
@@ -98,6 +106,19 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
             setError('User not found.');
             return;
         }
+        
+        // --- NEW FLOW: WHATSAPP MASTER ---
+        if (adminWhatsapp) {
+            const message = `Hi Master, I am ${user.username} (Born ${user.yearOfBirth || '?'}). I forgot my PIN. Please help me!`;
+            const url = `https://wa.me/${adminWhatsapp}?text=${encodeURIComponent(message)}`;
+            
+            // Open WhatsApp
+            window.open(url, '_blank');
+            setError('Opening WhatsApp to contact Master...');
+            return;
+        }
+
+        // --- OLD FLOW: SIMULATION (Fallback if no Admin number) ---
         if (!user.whatsappNumber) {
             setError('No WhatsApp number linked to this account.');
             return;
@@ -115,7 +136,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
         }, 500);
 
     } else {
-        // Step 2: Verify OTP and Reset
+        // Step 2: Verify OTP and Reset (Only for simulation mode)
         if (!recoveryUser) return;
 
         if (otpInput === generatedOtp) {
@@ -150,10 +171,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
 
         {mode === 'FORGOT_PIN' ? (
              <form onSubmit={handleForgotPinSubmit} className="space-y-4">
-                <h3 className="text-xl font-bold text-center text-gray-700">Reset Password</h3>
+                <h3 className="text-xl font-bold text-center text-gray-700">Need Help?</h3>
                 {!otpStep ? (
                     <>
-                        <p className="text-sm text-center text-gray-500">Enter your username to receive an OTP via WhatsApp.</p>
+                        <p className="text-sm text-center text-gray-500">Enter your username to contact the Master.</p>
                         <div>
                             <label className="block text-gray-700 font-bold mb-1 ml-2">Your Name</label>
                             <input
@@ -164,7 +185,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
                                 placeholder="e.g. Adam"
                             />
                         </div>
-                        <Button type="submit" size="lg" className="w-full">Send WhatsApp OTP</Button>
+                        <Button type="submit" size="lg" className="w-full bg-green-500 hover:bg-green-600 border-green-700">
+                            WhatsApp Master 💬
+                        </Button>
                     </>
                 ) : (
                     <>
@@ -193,7 +216,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onAdminLogin }) => {
                         <Button type="submit" size="lg" className="w-full bg-green-500 hover:bg-green-600 border-green-700">Reset & Login</Button>
                     </>
                 )}
-                 {error && <p className="text-red-500 text-center font-bold bg-red-100 py-2 rounded-xl">{error}</p>}
+                 {error && <p className="text-blue-600 text-center font-bold bg-blue-100 py-2 rounded-xl">{error}</p>}
                  <button type="button" onClick={() => { setMode('LOGIN'); setError(''); }} className="w-full text-center text-gray-400 font-bold mt-4">Cancel</button>
              </form>
         ) : (
